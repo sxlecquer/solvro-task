@@ -19,6 +19,10 @@ public class Developer {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(unique = true)
+    private String email;
+
     private Specialization specialization;
 
     @ManyToMany

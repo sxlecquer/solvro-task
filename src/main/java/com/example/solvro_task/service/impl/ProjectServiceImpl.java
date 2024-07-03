@@ -22,13 +22,22 @@ public class ProjectServiceImpl implements ProjectService {
 
     @Override
     public void createProject(ProjectCreationRequest request) {
-        List<Developer> developers = request.developers();
+        List<Developer> developers = request.developerEmails().stream()
+                .map(email -> {
+                    Developer developer = developerService.findByEmail(email);
+                    if(developer == null) {
+                        throw new IllegalArgumentException("Developer not found for email: " + email);
+                    }
+                    return developer;
+                })
+                .toList();
         if(developers.isEmpty()) {
             throw new IllegalArgumentException("There are no developers assigned to this project.");
         }
 
         Project project = Project.builder()
-                .name(request.projectName())
+                .name(request.name())
+                .description(request.description())
                 .developers(developers)
                 .build();
         projectRepository.save(project);

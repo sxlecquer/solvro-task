@@ -6,4 +6,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface DeveloperRepository extends JpaRepository<Developer, Long> {
+    Developer findByEmail(String email);
 }

@@ -26,7 +26,12 @@ public class Project {
             allocationSize = 1
     )
     private Long id;
+
     private String name;
+
+    @Basic(fetch = FetchType.LAZY)
+    @Column(columnDefinition = "TEXT")
+    private String description;
 
     @ManyToMany(mappedBy = "projects")
     private List<Developer> developers = new ArrayList<>();

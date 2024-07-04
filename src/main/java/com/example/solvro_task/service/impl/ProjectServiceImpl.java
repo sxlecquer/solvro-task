@@ -2,7 +2,9 @@ package com.example.solvro_task.service.impl;
 
 import com.example.solvro_task.entity.Developer;
 import com.example.solvro_task.entity.Project;
+import com.example.solvro_task.model.DeveloperModel;
 import com.example.solvro_task.model.ProjectCreationRequest;
+import com.example.solvro_task.model.ProjectResponse;
 import com.example.solvro_task.repository.ProjectRepository;
 import com.example.solvro_task.service.DeveloperService;
 import com.example.solvro_task.service.ProjectService;
@@ -46,5 +48,15 @@ public class ProjectServiceImpl implements ProjectService {
             developer.getProjects().add(project);
             developerService.save(developer);
         }
+    }
+
+    @Override
+    public ProjectResponse findById(Long projectId) {
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new IllegalArgumentException("Project not found by id: " + projectId));
+        List<DeveloperModel> developers = project.getDevelopers().stream()
+                .map(dev -> new DeveloperModel(dev.getEmail(), dev.getSpecialization()))
+                .toList();
+        return new ProjectResponse(project.getName(), project.getDescription(), developers);
     }
 }

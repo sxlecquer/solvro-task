@@ -3,13 +3,15 @@ package com.example.solvro_task.service.impl;
 import com.example.solvro_task.entity.Developer;
 import com.example.solvro_task.entity.Project;
 import com.example.solvro_task.model.DeveloperModel;
-import com.example.solvro_task.model.ProjectCreationRequest;
-import com.example.solvro_task.model.ProjectResponse;
+import com.example.solvro_task.model.request.ProjectCreationRequest;
+import com.example.solvro_task.model.response.DeveloperProjectsResponse;
+import com.example.solvro_task.model.response.ProjectResponse;
 import com.example.solvro_task.repository.ProjectRepository;
 import com.example.solvro_task.service.DeveloperService;
 import com.example.solvro_task.service.ProjectService;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -58,5 +60,22 @@ public class ProjectServiceImpl implements ProjectService {
                 .map(dev -> new DeveloperModel(dev.getEmail(), dev.getSpecialization()))
                 .toList();
         return new ProjectResponse(project.getName(), project.getDescription(), developers);
+    }
+
+    @Override
+    public DeveloperProjectsResponse getProjectsByEmail(String email) {
+        Developer developer = developerService.findByEmail(email);
+        if(developer == null) {
+            throw new IllegalArgumentException("Developer not found by email: " + email);
+        }
+
+        List<ProjectResponse> projects = new ArrayList<>();
+        for(Project project : developer.getProjects()) {
+            List<DeveloperModel> developers = project.getDevelopers().stream()
+                    .map(dev -> new DeveloperModel(dev.getEmail(), dev.getSpecialization()))
+                    .toList();
+            projects.add(new ProjectResponse(project.getName(), project.getDescription(), developers));
+        }
+        return new DeveloperProjectsResponse(projects);
     }
 }

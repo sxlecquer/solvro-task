@@ -1,4 +1,4 @@
-package com.example.solvro_task.model;
+package com.example.solvro_task.model.request;
 
 import java.util.List;
 

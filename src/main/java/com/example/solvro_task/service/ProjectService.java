@@ -1,10 +1,13 @@
 package com.example.solvro_task.service;
 
-import com.example.solvro_task.model.ProjectCreationRequest;
-import com.example.solvro_task.model.ProjectResponse;
+import com.example.solvro_task.model.request.ProjectCreationRequest;
+import com.example.solvro_task.model.response.DeveloperProjectsResponse;
+import com.example.solvro_task.model.response.ProjectResponse;
 
 public interface ProjectService {
     void createProject(ProjectCreationRequest request);
 
     ProjectResponse findById(Long projectId);
+
+    DeveloperProjectsResponse getProjectsByEmail(String email);
 }

@@ -35,4 +35,10 @@ public class Project {
 
     @ManyToMany(mappedBy = "projects")
     private List<Developer> developers = new ArrayList<>();
+
+    @OneToMany(
+            cascade = CascadeType.ALL,
+            mappedBy = "project"
+    )
+    private List<Task> tasks = new ArrayList<>();
 }

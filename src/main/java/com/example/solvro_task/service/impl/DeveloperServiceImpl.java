@@ -6,15 +6,13 @@ import com.example.solvro_task.repository.DeveloperRepository;
 import com.example.solvro_task.service.DeveloperService;
 import org.springframework.stereotype.Service;
 
+import java.util.Optional;
+
 @Service
 public record DeveloperServiceImpl(DeveloperRepository developerRepository) implements DeveloperService {
 
     @Override
     public void registerDeveloper(DeveloperModel dev) {
-        if(!dev.email().matches("^(?=.{1,64}@)[A-Za-z0-9_-]+(\\.[A-Za-z0-9_-]+)*@[^@_!#$%&’*+/=?`{|}~^.-][A-Za-z0-9_-]+(\\.[A-Za-z0-9-]+)*(\\.[A-Za-z]{2,})$")) {
-            throw new IllegalArgumentException("Incorrect email address provided.");
-        }
-
         Developer developer = Developer.builder()
                 .email(dev.email())
                 .specialization(dev.specialization())
@@ -30,5 +28,10 @@ public record DeveloperServiceImpl(DeveloperRepository developerRepository) impl
     @Override
     public Developer findByEmail(String email) {
         return developerRepository.findByEmail(email);
+    }
+
+    @Override
+    public Optional<Developer> findById(Long developerId) {
+        return developerRepository.findById(developerId);
     }
 }

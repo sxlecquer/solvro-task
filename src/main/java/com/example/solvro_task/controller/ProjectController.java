@@ -1,9 +1,11 @@
 package com.example.solvro_task.controller;
 
+import com.example.solvro_task.model.request.TaskCreationRequest;
 import com.example.solvro_task.model.response.DeveloperProjectsResponse;
 import com.example.solvro_task.model.request.ProjectCreationRequest;
 import com.example.solvro_task.model.response.ProjectResponse;
 import com.example.solvro_task.service.ProjectService;
+import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
@@ -20,7 +22,7 @@ public class ProjectController {
 
     @PostMapping
     @Transactional
-    public void createProject(@RequestBody ProjectCreationRequest request) {
+    public void createProject(@Valid @RequestBody ProjectCreationRequest request) {
         log.info("new project creation request: {}", request);
         projectService.createProject(request);
     }
@@ -35,5 +37,12 @@ public class ProjectController {
     public DeveloperProjectsResponse getProjectsByEmail(@RequestParam("email") String email) {
         log.info("get developer projects by email: {}", email);
         return projectService.getProjectsByEmail(email);
+    }
+
+    @PostMapping("/{id}/task")
+    @Transactional
+    public void createTask(@Valid @RequestBody TaskCreationRequest request, @PathVariable("id") Long projectId) {
+        log.info("create task for project with id: {}", projectId);
+        projectService.createTask(request, projectId);
     }
 }

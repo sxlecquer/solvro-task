@@ -6,8 +6,6 @@ import com.example.solvro_task.repository.DeveloperRepository;
 import com.example.solvro_task.service.DeveloperService;
 import org.springframework.stereotype.Service;
 
-import java.util.Optional;
-
 @Service
 public record DeveloperServiceImpl(DeveloperRepository developerRepository) implements DeveloperService {
 
@@ -28,10 +26,5 @@ public record DeveloperServiceImpl(DeveloperRepository developerRepository) impl
     @Override
     public Developer findByEmail(String email) {
         return developerRepository.findByEmail(email);
-    }
-
-    @Override
-    public Optional<Developer> findById(Long developerId) {
-        return developerRepository.findById(developerId);
     }
 }

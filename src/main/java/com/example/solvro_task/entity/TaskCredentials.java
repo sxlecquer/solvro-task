@@ -3,7 +3,7 @@ package com.example.solvro_task.entity;
 import com.example.solvro_task.entity.enums.Specialization;
 import jakarta.persistence.Embeddable;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.OneToOne;
+import jakarta.persistence.ManyToOne;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -19,7 +19,7 @@ public class TaskCredentials {
     private int estimation;
     private Specialization specialization;
 
-    @OneToOne
+    @ManyToOne
     @JoinColumn(
             name = "assigned_dev_id",
             referencedColumnName = "id"

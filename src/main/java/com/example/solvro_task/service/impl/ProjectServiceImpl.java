@@ -39,7 +39,7 @@ public class ProjectServiceImpl implements ProjectService {
                 .map(email -> {
                     Developer developer = developerService.findByEmail(email);
                     if(developer == null) {
-                        throw new IllegalArgumentException("Developer not found for email: " + email);
+                        throw new IllegalArgumentException("Developer not found by email: " + email);
                     }
                     return developer;
                 })
@@ -89,7 +89,14 @@ public class ProjectServiceImpl implements ProjectService {
     public void createTask(TaskCreationRequest request, Long projectId) {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new IllegalArgumentException("Project not found by id: " + projectId));
-        Developer assignedDeveloper = developerService.findById(request.assignedDeveloper()).orElse(null);
+        Developer assignedDeveloper = null;
+        if(request.assignedDeveloper() != null) {
+            assignedDeveloper = developerService.findByEmail(request.assignedDeveloper());
+            if(assignedDeveloper == null)
+                throw new IllegalArgumentException("Developer not found by email: " + request.assignedDeveloper());
+            if(assignedDeveloper.getSpecialization() != request.specialization())
+                throw new IllegalArgumentException("Task specialization mismatches assigned developer");
+        }
         Task task = Task.builder()
                 .createdAt(LocalDateTime.now())
                 .taskCredentials(TaskCredentials.builder()

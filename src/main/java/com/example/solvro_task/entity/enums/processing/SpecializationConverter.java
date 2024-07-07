@@ -1,4 +1,4 @@
-package com.example.solvro_task.entity.enums.converter;
+package com.example.solvro_task.entity.enums.processing;
 
 import com.example.solvro_task.entity.enums.Specialization;
 import jakarta.persistence.AttributeConverter;

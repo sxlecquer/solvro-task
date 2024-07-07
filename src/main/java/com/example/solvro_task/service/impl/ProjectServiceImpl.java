@@ -1,14 +1,16 @@
 package com.example.solvro_task.service.impl;
 
+import com.example.solvro_task.dto.request.TaskChangeRequest;
+import com.example.solvro_task.dto.response.TaskResponse;
 import com.example.solvro_task.entity.Developer;
 import com.example.solvro_task.entity.Project;
 import com.example.solvro_task.entity.Task;
 import com.example.solvro_task.entity.TaskCredentials;
-import com.example.solvro_task.model.DeveloperModel;
-import com.example.solvro_task.model.request.ProjectCreationRequest;
-import com.example.solvro_task.model.request.TaskCreationRequest;
-import com.example.solvro_task.model.response.DeveloperProjectsResponse;
-import com.example.solvro_task.model.response.ProjectResponse;
+import com.example.solvro_task.dto.DeveloperModel;
+import com.example.solvro_task.dto.request.ProjectCreationRequest;
+import com.example.solvro_task.dto.request.TaskCreationRequest;
+import com.example.solvro_task.dto.response.DeveloperProjectsResponse;
+import com.example.solvro_task.dto.response.ProjectResponse;
 import com.example.solvro_task.repository.ProjectRepository;
 import com.example.solvro_task.service.DeveloperService;
 import com.example.solvro_task.service.ProjectService;
@@ -36,13 +38,8 @@ public class ProjectServiceImpl implements ProjectService {
     @Override
     public void createProject(ProjectCreationRequest request) {
         List<Developer> developers = request.developerEmails().stream()
-                .map(email -> {
-                    Developer developer = developerService.findByEmail(email);
-                    if(developer == null) {
-                        throw new IllegalArgumentException("Developer not found by email: " + email);
-                    }
-                    return developer;
-                })
+                .map(email -> developerService.findByEmail(email)
+                        .orElseThrow(() -> new IllegalArgumentException("Developer not found by email: " + email)))
                 .toList();
 
         Project project = Project.builder()
@@ -70,10 +67,8 @@ public class ProjectServiceImpl implements ProjectService {
 
     @Override
     public DeveloperProjectsResponse getProjectsByEmail(String email) {
-        Developer developer = developerService.findByEmail(email);
-        if(developer == null) {
-            throw new IllegalArgumentException("Developer not found by email: " + email);
-        }
+        Developer developer = developerService.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("Developer not found by email: " + email));
 
         List<ProjectResponse> projects = new ArrayList<>();
         for(Project project : developer.getProjects()) {
@@ -91,9 +86,8 @@ public class ProjectServiceImpl implements ProjectService {
                 .orElseThrow(() -> new IllegalArgumentException("Project not found by id: " + projectId));
         Developer assignedDeveloper = null;
         if(request.assignedDeveloper() != null) {
-            assignedDeveloper = developerService.findByEmail(request.assignedDeveloper());
-            if(assignedDeveloper == null)
-                throw new IllegalArgumentException("Developer not found by email: " + request.assignedDeveloper());
+            assignedDeveloper = developerService.findByEmail(request.assignedDeveloper())
+                    .orElseThrow(() -> new IllegalArgumentException("Developer not found by email: " + request.assignedDeveloper()));
             if(assignedDeveloper.getSpecialization() != request.specialization())
                 throw new IllegalArgumentException("Task specialization mismatches assigned developer");
         }
@@ -112,5 +106,26 @@ public class ProjectServiceImpl implements ProjectService {
 
         project.getTasks().add(task);
         projectRepository.save(project);
+    }
+
+    @Override
+    public TaskResponse changeTask(TaskChangeRequest request, Long projectId, Long taskId) {
+        Task task = taskService.findByIdAndProjectId(taskId, projectId)
+                .orElseThrow(() -> new IllegalArgumentException("Task not found by id: " + taskId + " for project id: " + projectId));
+        task.setState(request.state());
+        Developer assignedDeveloper;
+        if(request.assignedDeveloper() != null) {
+            assignedDeveloper = developerService.findByEmail(request.assignedDeveloper())
+                    .orElseThrow(() -> new IllegalArgumentException("Developer not found by email: " + request.assignedDeveloper()));
+            if(assignedDeveloper.getSpecialization() != task.getTaskCredentials().getSpecialization())
+                throw new IllegalArgumentException("Task specialization mismatches assigned developer");
+            task.getTaskCredentials().setAssignedDeveloper(assignedDeveloper);
+        }
+        taskService.save(task);
+        Project project = projectRepository.findById(projectId).orElseThrow();
+        TaskCredentials taskCredentials = task.getTaskCredentials();
+        String assignedDevEmail = taskCredentials.getAssignedDeveloper() != null ? taskCredentials.getAssignedDeveloper().getEmail() : null;
+        return new TaskResponse(project.getName(), taskCredentials.getName(), taskCredentials.getEstimation(),
+                taskCredentials.getSpecialization(), assignedDevEmail, task.getState(), task.getCreatedAt());
     }
 }

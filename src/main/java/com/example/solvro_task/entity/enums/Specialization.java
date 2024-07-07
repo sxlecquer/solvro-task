@@ -1,6 +1,6 @@
 package com.example.solvro_task.entity.enums;
 
-import com.example.solvro_task.entity.enums.converter.SpecializationDeserializer;
+import com.example.solvro_task.entity.enums.processing.SpecializationDeserializer;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;

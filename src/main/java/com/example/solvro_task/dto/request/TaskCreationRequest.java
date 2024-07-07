@@ -1,4 +1,4 @@
-package com.example.solvro_task.model.request;
+package com.example.solvro_task.dto.request;
 
 import com.example.solvro_task.annotation.FibonacciNumber;
 import com.example.solvro_task.entity.enums.Specialization;

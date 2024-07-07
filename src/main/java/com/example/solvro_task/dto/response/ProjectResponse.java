@@ -1,6 +1,6 @@
-package com.example.solvro_task.model.response;
+package com.example.solvro_task.dto.response;
 
-import com.example.solvro_task.model.DeveloperModel;
+import com.example.solvro_task.dto.DeveloperModel;
 
 import java.util.List;
 

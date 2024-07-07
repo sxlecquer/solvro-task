@@ -1,4 +1,4 @@
-package com.example.solvro_task.model;
+package com.example.solvro_task.dto;
 
 import com.example.solvro_task.entity.enums.Specialization;
 import jakarta.validation.constraints.Email;

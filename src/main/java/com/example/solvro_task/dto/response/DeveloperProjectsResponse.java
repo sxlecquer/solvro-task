@@ -1,4 +1,4 @@
-package com.example.solvro_task.model.response;
+package com.example.solvro_task.dto.response;
 
 import java.util.List;
 

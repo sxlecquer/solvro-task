@@ -1,25 +1,24 @@
 package com.example.solvro_task.service.impl;
 
 import com.example.solvro_task.dto.request.TaskChangeRequest;
+import com.example.solvro_task.dto.response.TaskAssignmentResponse;
 import com.example.solvro_task.dto.response.TaskResponse;
-import com.example.solvro_task.entity.Developer;
-import com.example.solvro_task.entity.Project;
-import com.example.solvro_task.entity.Task;
-import com.example.solvro_task.entity.TaskCredentials;
+import com.example.solvro_task.entity.*;
 import com.example.solvro_task.dto.DeveloperModel;
 import com.example.solvro_task.dto.request.ProjectCreationRequest;
 import com.example.solvro_task.dto.request.TaskCreationRequest;
 import com.example.solvro_task.dto.response.DeveloperProjectsResponse;
 import com.example.solvro_task.dto.response.ProjectResponse;
+import com.example.solvro_task.entity.enums.Specialization;
 import com.example.solvro_task.repository.ProjectRepository;
+import com.example.solvro_task.repository.TaskAssignmentRepository;
 import com.example.solvro_task.service.DeveloperService;
 import com.example.solvro_task.service.ProjectService;
 import com.example.solvro_task.service.TaskService;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 import static com.example.solvro_task.entity.enums.TaskState.*;
 
@@ -28,11 +27,13 @@ public class ProjectServiceImpl implements ProjectService {
     private final ProjectRepository projectRepository;
     private final DeveloperService developerService;
     private final TaskService taskService;
+    private final TaskAssignmentRepository taskAssignmentRepository;
 
-    public ProjectServiceImpl(ProjectRepository projectRepository, DeveloperService developerService, TaskService taskService) {
+    public ProjectServiceImpl(ProjectRepository projectRepository, DeveloperService developerService, TaskService taskService, TaskAssignmentRepository taskAssignmentRepository) {
         this.projectRepository = projectRepository;
         this.developerService = developerService;
         this.taskService = taskService;
+        this.taskAssignmentRepository = taskAssignmentRepository;
     }
 
     @Override
@@ -99,7 +100,7 @@ public class ProjectServiceImpl implements ProjectService {
                         .specialization(request.specialization())
                         .assignedDeveloper(assignedDeveloper)
                         .build())
-                .state(assignedDeveloper != null ? IN_PROGRESS : TODO)
+                .state(TODO)
                 .project(project)
                 .build();
         taskService.save(task);
@@ -127,5 +128,60 @@ public class ProjectServiceImpl implements ProjectService {
         String assignedDevEmail = taskCredentials.getAssignedDeveloper() != null ? taskCredentials.getAssignedDeveloper().getEmail() : null;
         return new TaskResponse(project.getName(), taskCredentials.getName(), taskCredentials.getEstimation(),
                 taskCredentials.getSpecialization(), assignedDevEmail, task.getState(), task.getCreatedAt());
+    }
+
+    @Override
+    public List<TaskAssignmentResponse> assignTasks(Long projectId) {
+        List<TaskAssignmentResponse> result = new ArrayList<>();
+        String projectName = projectRepository.findById(projectId)
+                .orElseThrow(() -> new IllegalArgumentException("Project not found by id: " + projectId))
+                .getName();
+        List<Task> unassignedTasks = taskService.findUnassignedTasksByProjectId(projectId);
+        Map<Specialization, List<Developer>> specializationMap = new HashMap<>();
+        Arrays.stream(Specialization.values()).forEach(spec ->
+                specializationMap.put(spec, developerService.findAllBySpecialization(spec)));
+
+        for(Task unassignedTask : unassignedTasks) {
+            TaskCredentials taskCredentials = unassignedTask.getTaskCredentials();
+            List<Developer> developers = specializationMap.get(taskCredentials.getSpecialization());
+            List<Developer> freeDevelopers = developers.stream()
+                    .filter(dev -> dev.getProjects().stream()
+                            .allMatch(project -> project.getTasks().stream().allMatch(task -> task.getState() == DONE)))
+                    .toList();
+            Developer assignedDeveloper = getDevWithMinEstimation(!freeDevelopers.isEmpty() ? freeDevelopers : developers);
+            if(assignedDeveloper == null)
+                throw new IllegalStateException("No developers found by specialization: " + taskCredentials.getSpecialization());
+            taskAssignmentRepository.save(TaskAssignment.builder()
+                    .developer(assignedDeveloper)
+                    .task(unassignedTask)
+                    .build()
+            );
+
+            TaskAssignmentResponse response = TaskAssignmentResponse.builder()
+                    .projectName(projectName)
+                    .taskName(taskCredentials.getName())
+                    .specialization(taskCredentials.getSpecialization())
+                    .devEmail(assignedDeveloper.getEmail())
+                    .build();
+            result.add(response);
+        }
+        return result;
+    }
+
+    private Developer getDevWithMinEstimation(List<Developer> developers) {
+        Developer result = null;
+        double minEstimation = Float.MAX_VALUE;
+        for(Developer developer : developers) {
+            double averageEstimation = developer.getProjects().stream()
+                    .mapToDouble(project -> project.getTasks().stream()
+                            .mapToInt(t -> t.getTaskCredentials().getEstimation()).average().orElse(0))
+                    .average()
+                    .orElse(0);
+            if(averageEstimation < minEstimation) {
+                minEstimation = averageEstimation;
+                result = developer;
+            }
+        }
+        return result;
     }
 }

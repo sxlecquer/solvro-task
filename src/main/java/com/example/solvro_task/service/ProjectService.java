@@ -5,7 +5,10 @@ import com.example.solvro_task.dto.request.TaskChangeRequest;
 import com.example.solvro_task.dto.request.TaskCreationRequest;
 import com.example.solvro_task.dto.response.DeveloperProjectsResponse;
 import com.example.solvro_task.dto.response.ProjectResponse;
+import com.example.solvro_task.dto.response.TaskAssignmentResponse;
 import com.example.solvro_task.dto.response.TaskResponse;
+
+import java.util.List;
 
 public interface ProjectService {
     void createProject(ProjectCreationRequest request);
@@ -17,4 +20,6 @@ public interface ProjectService {
     void createTask(TaskCreationRequest request, Long projectId);
 
     TaskResponse changeTask(TaskChangeRequest request, Long projectId, Long taskId);
+
+    List<TaskAssignmentResponse> assignTasks(Long projectId);
 }

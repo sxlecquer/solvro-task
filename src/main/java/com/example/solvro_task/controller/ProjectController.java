@@ -1,6 +1,7 @@
 package com.example.solvro_task.controller;
 
 import com.example.solvro_task.dto.request.TaskChangeRequest;
+import com.example.solvro_task.dto.response.TaskAssignmentResponse;
 import com.example.solvro_task.dto.response.TaskResponse;
 import com.example.solvro_task.dto.request.TaskCreationRequest;
 import com.example.solvro_task.dto.response.DeveloperProjectsResponse;
@@ -12,6 +13,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/project")
@@ -56,5 +59,11 @@ public class ProjectController {
     public TaskResponse changeTask(@Valid @RequestBody TaskChangeRequest request, @PathVariable("id") Long projectId, @PathVariable Long taskId) {
         log.info("change task with id: {} for project id: {}", taskId, projectId);
         return projectService.changeTask(request, projectId, taskId);
+    }
+
+    @PostMapping("/{id}/task/assignment")
+    public List<TaskAssignmentResponse> assignTasks(@PathVariable("id") Long projectId) {
+        log.info("assign tasks for project with id: {}", projectId);
+        return projectService.assignTasks(projectId);
     }
 }

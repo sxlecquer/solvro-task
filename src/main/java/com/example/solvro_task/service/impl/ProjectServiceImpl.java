@@ -187,7 +187,7 @@ public class ProjectServiceImpl implements ProjectService {
         for(Developer developer : developers) {
             double averageEstimation = developer.getProjects().stream()
                     .flatMap(p -> p.getTasks().stream())
-                    .filter(t -> t.getTaskCredentials().getAssignedDeveloper().equals(developer))
+                    .filter(t -> Objects.equals(t.getTaskCredentials().getAssignedDeveloper(), developer))
                     .mapToInt(t -> t.getTaskCredentials().getEstimation())
                     .average()
                     .orElse(0);

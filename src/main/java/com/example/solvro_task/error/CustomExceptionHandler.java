@@ -12,8 +12,8 @@ import java.util.Map;
 @RestControllerAdvice
 public class CustomExceptionHandler {
 
-    @ExceptionHandler(RuntimeException.class)
-    public ResponseEntity<String> onRuntimeException(RuntimeException ex) {
+    @ExceptionHandler({IllegalArgumentException.class, IllegalStateException.class})
+    public ResponseEntity<String> onIllegalException(RuntimeException ex) {
         return ResponseEntity.badRequest().body(ex.getMessage());
     }
 

@@ -10,6 +10,8 @@ import lombok.NoArgsConstructor;
 import java.util.HashSet;
 import java.util.Set;
 
+import static jakarta.persistence.CascadeType.*;
+
 @Entity
 @Data
 @NoArgsConstructor
@@ -25,7 +27,7 @@ public class Developer {
 
     private Specialization specialization;
 
-    @ManyToMany
+    @ManyToMany(cascade = {PERSIST, REFRESH})
     @JoinTable(
             joinColumns = @JoinColumn(
                     name = "developer_id",

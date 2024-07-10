@@ -9,6 +9,8 @@ import lombok.NoArgsConstructor;
 import java.util.ArrayList;
 import java.util.List;
 
+import static jakarta.persistence.CascadeType.*;
+
 @Entity
 @Data
 @NoArgsConstructor
@@ -33,11 +35,14 @@ public class Project {
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    @ManyToMany(mappedBy = "projects")
+    @ManyToMany(
+            cascade = {PERSIST, REFRESH},
+            mappedBy = "projects"
+    )
     private List<Developer> developers = new ArrayList<>();
 
     @OneToMany(
-            cascade = CascadeType.ALL,
+            cascade = ALL,
             mappedBy = "project"
     )
     private List<Task> tasks = new ArrayList<>();

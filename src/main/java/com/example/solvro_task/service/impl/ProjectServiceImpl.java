@@ -91,6 +91,8 @@ public class ProjectServiceImpl implements ProjectService {
                     .orElseThrow(() -> new IllegalArgumentException("Developer not found by email: " + request.assignedDeveloper()));
             if(assignedDeveloper.getSpecialization() != request.specialization())
                 throw new IllegalArgumentException("Task specialization mismatches assigned developer");
+            assignedDeveloper.getProjects().add(project);
+            developerService.save(assignedDeveloper);
         }
         Task task = Task.builder()
                 .createdAt(LocalDateTime.now())
@@ -113,6 +115,7 @@ public class ProjectServiceImpl implements ProjectService {
     public TaskResponse changeTask(TaskChangeRequest request, Long projectId, Long taskId) {
         Task task = taskService.findByIdAndProjectId(taskId, projectId)
                 .orElseThrow(() -> new IllegalArgumentException("Task not found by id: " + taskId + " for project id: " + projectId));
+        Project project = projectRepository.findById(projectId).orElseThrow();
         task.setState(request.state());
         Developer assignedDeveloper;
         if(request.assignedDeveloper() != null) {
@@ -120,10 +123,16 @@ public class ProjectServiceImpl implements ProjectService {
                     .orElseThrow(() -> new IllegalArgumentException("Developer not found by email: " + request.assignedDeveloper()));
             if(assignedDeveloper.getSpecialization() != task.getTaskCredentials().getSpecialization())
                 throw new IllegalArgumentException("Task specialization mismatches assigned developer");
+            Developer previous = task.getTaskCredentials().getAssignedDeveloper();
+            if(taskService.findByProjectIdAndDeveloper(projectId, previous).size() == 1) {
+                previous.getProjects().remove(project);
+                developerService.save(previous);
+            }
             task.getTaskCredentials().setAssignedDeveloper(assignedDeveloper);
+            assignedDeveloper.getProjects().add(project);
+            developerService.save(assignedDeveloper);
         }
         taskService.save(task);
-        Project project = projectRepository.findById(projectId).orElseThrow();
         TaskCredentials taskCredentials = task.getTaskCredentials();
         String assignedDevEmail = taskCredentials.getAssignedDeveloper() != null ? taskCredentials.getAssignedDeveloper().getEmail() : null;
         return new TaskResponse(project.getName(), taskCredentials.getName(), taskCredentials.getEstimation(),
@@ -146,11 +155,14 @@ public class ProjectServiceImpl implements ProjectService {
             List<Developer> developers = specializationMap.get(taskCredentials.getSpecialization());
             List<Developer> freeDevelopers = developers.stream()
                     .filter(dev -> dev.getProjects().stream()
-                            .allMatch(project -> project.getTasks().stream().allMatch(task -> task.getState() == DONE)))
+                            .allMatch(project -> project.getTasks().stream()
+                                    .filter(t -> Objects.equals(t.getTaskCredentials().getAssignedDeveloper(), dev))
+                                    .allMatch(t -> t.getState() == DONE)))
                     .toList();
             Developer assignedDeveloper = getDevWithMinEstimation(!freeDevelopers.isEmpty() ? freeDevelopers : developers);
             if(assignedDeveloper == null)
                 throw new IllegalStateException("No developers found by specialization: " + taskCredentials.getSpecialization());
+            unassignedTask.getTaskCredentials().setAssignedDeveloper(assignedDeveloper); // rollback these changes
             taskAssignmentRepository.save(TaskAssignment.builder()
                     .developer(assignedDeveloper)
                     .task(unassignedTask)
@@ -165,6 +177,7 @@ public class ProjectServiceImpl implements ProjectService {
                     .build();
             result.add(response);
         }
+        unassignedTasks.forEach(t -> t.getTaskCredentials().setAssignedDeveloper(null));
         return result;
     }
 
@@ -173,8 +186,9 @@ public class ProjectServiceImpl implements ProjectService {
         double minEstimation = Float.MAX_VALUE;
         for(Developer developer : developers) {
             double averageEstimation = developer.getProjects().stream()
-                    .mapToDouble(project -> project.getTasks().stream()
-                            .mapToInt(t -> t.getTaskCredentials().getEstimation()).average().orElse(0))
+                    .flatMap(p -> p.getTasks().stream())
+                    .filter(t -> t.getTaskCredentials().getAssignedDeveloper().equals(developer))
+                    .mapToInt(t -> t.getTaskCredentials().getEstimation())
                     .average()
                     .orElse(0);
             if(averageEstimation < minEstimation) {

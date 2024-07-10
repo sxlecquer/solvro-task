@@ -1,5 +1,6 @@
 package com.example.solvro_task.service;
 
+import com.example.solvro_task.entity.Developer;
 import com.example.solvro_task.entity.Task;
 
 import java.util.List;
@@ -11,4 +12,6 @@ public interface TaskService {
     Optional<Task> findByIdAndProjectId(Long taskId, Long projectId);
 
     List<Task> findUnassignedTasksByProjectId(Long projectId);
+
+    List<Task> findByProjectIdAndDeveloper(Long projectId, Developer developer);
 }

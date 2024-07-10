@@ -62,6 +62,7 @@ public class ProjectController {
     }
 
     @PostMapping("/{id}/task/assignment")
+    @Transactional
     public List<TaskAssignmentResponse> assignTasks(@PathVariable("id") Long projectId) {
         log.info("assign tasks for project with id: {}", projectId);
         return projectService.assignTasks(projectId);

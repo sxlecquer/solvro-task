@@ -15,6 +15,8 @@ import com.example.solvro_task.repository.TaskAssignmentRepository;
 import com.example.solvro_task.service.DeveloperService;
 import com.example.solvro_task.service.ProjectService;
 import com.example.solvro_task.service.TaskService;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -179,6 +181,29 @@ public class ProjectServiceImpl implements ProjectService {
         }
         unassignedTasks.forEach(t -> t.getTaskCredentials().setAssignedDeveloper(null));
         return result;
+    }
+
+    @Override
+    public ResponseEntity<?> acceptTaskAssignment(Long projectId, Long assignId, boolean accepted) {
+        TaskAssignment taskAssignment = taskAssignmentRepository.findByIdAndProjectId(assignId, projectId)
+                .orElseThrow(() -> new IllegalArgumentException("Task assignment not found by id: " + assignId + " for project id: " + projectId));
+        taskAssignmentRepository.delete(taskAssignment);
+        if(accepted) {
+            Task task = taskAssignment.getTask();
+            Developer developer = taskAssignment.getDeveloper();
+            TaskCredentials taskCredentials = task.getTaskCredentials();
+
+            taskCredentials.setAssignedDeveloper(developer);
+            taskService.save(task);
+
+            developer.getProjects().add(task.getProject());
+            developerService.save(developer);
+
+            return new ResponseEntity<>(new TaskResponse(task.getProject().getName(), taskCredentials.getName(),
+                    taskCredentials.getEstimation(), taskCredentials.getSpecialization(), developer.getEmail(),
+                    task.getState(), task.getCreatedAt()), HttpStatus.ACCEPTED);
+        }
+        return ResponseEntity.ok("Task assignment rejected");
     }
 
     private Developer getDevWithMinEstimation(List<Developer> developers) {

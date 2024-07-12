@@ -67,4 +67,11 @@ public class ProjectController {
         log.info("assign tasks for project with id: {}", projectId);
         return projectService.assignTasks(projectId);
     }
+
+    @PatchMapping("/{id}/task/assignment/{assignId}")
+    @Transactional
+    public ResponseEntity<?> acceptTaskAssignment(@PathVariable("id") Long projectId, @PathVariable Long assignId, @RequestParam boolean accepted) {
+        log.info("accept task assignment with id: {} for project id: {} ", assignId, projectId);
+        return projectService.acceptTaskAssignment(projectId, assignId, accepted);
+    }
 }

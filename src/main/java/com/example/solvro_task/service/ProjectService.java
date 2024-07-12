@@ -7,6 +7,7 @@ import com.example.solvro_task.dto.response.DeveloperProjectsResponse;
 import com.example.solvro_task.dto.response.ProjectResponse;
 import com.example.solvro_task.dto.response.TaskAssignmentResponse;
 import com.example.solvro_task.dto.response.TaskResponse;
+import org.springframework.http.ResponseEntity;
 
 import java.util.List;
 
@@ -22,4 +23,6 @@ public interface ProjectService {
     TaskResponse changeTask(TaskChangeRequest request, Long projectId, Long taskId);
 
     List<TaskAssignmentResponse> assignTasks(Long projectId);
+
+    ResponseEntity<?> acceptTaskAssignment(Long projectId, Long assignId, boolean accepted);
 }

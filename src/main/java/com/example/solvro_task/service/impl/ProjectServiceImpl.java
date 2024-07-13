@@ -151,6 +151,7 @@ public class ProjectServiceImpl implements ProjectService {
         Map<Specialization, List<Developer>> specializationMap = new HashMap<>();
         Arrays.stream(Specialization.values()).forEach(spec ->
                 specializationMap.put(spec, developerService.findAllBySpecialization(spec)));
+        unassignedTasks.forEach(taskAssignmentRepository::deleteByTask);
 
         for(Task unassignedTask : unassignedTasks) {
             TaskCredentials taskCredentials = unassignedTask.getTaskCredentials();

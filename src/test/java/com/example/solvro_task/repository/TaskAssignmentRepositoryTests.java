@@ -1,6 +1,7 @@
 package com.example.solvro_task.repository;
 
 import com.example.solvro_task.entity.*;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.jdbc.EmbeddedDatabaseConnection;
@@ -25,75 +26,54 @@ public class TaskAssignmentRepositoryTests {
     @Autowired
     private TaskAssignmentRepository taskAssignmentRepository;
 
-    @Test
-    public void taskAssignmentRepository_findByIdAndProjectId_returnTaskAssignment() {
-        // arrange
-        Project project = Project.builder()
+    private Project project;
+    private Task task;
+    private TaskAssignment taskAssignment;
+
+    @BeforeEach
+    public void setUp() {
+        project = Project.builder()
                 .name("project")
                 .description("description")
                 .tasks(new ArrayList<>())
                 .build();
-        Task task = Task.builder()
+        Developer developer = Developer.builder()
+                .email("dev@x.com")
+                .specialization(FRONTEND)
+                .build();
+        entityManager.persistAndFlush(project);
+        entityManager.persistAndFlush(developer);
+
+        task = Task.builder()
                 .createdAt(LocalDateTime.now())
                 .taskCredentials(TaskCredentials.builder()
                         .name("task")
                         .estimation(21)
-                        .specialization(DEVOPS)
+                        .specialization(FRONTEND)
                         .build())
                 .state(IN_PROGRESS)
                 .project(project)
                 .build();
         project.getTasks().add(task);
-        Long projectId = entityManager.persistAndGetId(project, Long.class);
+        entityManager.persist(task);
 
-        Developer developer = Developer.builder()
-                .email("dev@x.com")
-                .specialization(DEVOPS)
-                .build();
-        TaskAssignment taskAssignment = TaskAssignment.builder()
+        taskAssignment = TaskAssignment.builder()
                 .task(task)
                 .developer(developer)
                 .build();
-        entityManager.persist(developer);
-        TaskAssignment savedTaskAssignment = entityManager.persistAndFlush(taskAssignment);
+        entityManager.persistAndFlush(taskAssignment);
+    }
 
-        // act
-        Optional<TaskAssignment> foundTaskAssignment = taskAssignmentRepository.findByIdAndProjectId(savedTaskAssignment.getId(), projectId);
+    @Test
+    public void taskAssignmentRepository_findByIdAndProjectId_returnTaskAssignment() {
+        Optional<TaskAssignment> foundTaskAssignment = taskAssignmentRepository.findByIdAndProjectId(taskAssignment.getId(), project.getId());
 
-        // assert
         assertThat(foundTaskAssignment.isPresent()).isTrue();
         assertThat(foundTaskAssignment.get().getTask()).isEqualTo(task);
     }
 
     @Test
     public void taskAssignmentRepository_deleteByTask_returnEmptyTaskAssignment() {
-        Project project = Project.builder()
-                .name("project")
-                .build();
-        Task task = Task.builder()
-                .createdAt(LocalDateTime.now())
-                .taskCredentials(TaskCredentials.builder()
-                        .name("task")
-                        .estimation(3)
-                        .specialization(FRONTEND)
-                        .build())
-                .state(DONE)
-                .project(project)
-                .build();
-        entityManager.persist(project);
-        entityManager.persist(task);
-
-        Developer developer = Developer.builder()
-                .email("dev@x.com")
-                .specialization(FRONTEND)
-                .build();
-        TaskAssignment taskAssignment = TaskAssignment.builder()
-                .task(task)
-                .developer(developer)
-                .build();
-        entityManager.persist(developer);
-
-        taskAssignmentRepository.saveAndFlush(taskAssignment);
         taskAssignmentRepository.deleteByTask(task);
         entityManager.detach(taskAssignment);
         Optional<TaskAssignment> foundTaskAssignment = taskAssignmentRepository.findById(taskAssignment.getId());

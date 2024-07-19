@@ -2,6 +2,7 @@ package com.example.solvro_task.repository;
 
 import com.example.solvro_task.entity.*;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.jdbc.EmbeddedDatabaseConnection;
@@ -65,6 +66,7 @@ public class TaskAssignmentRepositoryTests {
     }
 
     @Test
+    @DisplayName("findByIdAndProjectId")
     public void taskAssignmentRepository_findByIdAndProjectId_returnTaskAssignment() {
         Optional<TaskAssignment> foundTaskAssignment = taskAssignmentRepository.findByIdAndProjectId(taskAssignment.getId(), project.getId());
 
@@ -73,6 +75,7 @@ public class TaskAssignmentRepositoryTests {
     }
 
     @Test
+    @DisplayName("deleteByTask")
     public void taskAssignmentRepository_deleteByTask_returnEmptyTaskAssignment() {
         taskAssignmentRepository.deleteByTask(task);
         entityManager.detach(taskAssignment);

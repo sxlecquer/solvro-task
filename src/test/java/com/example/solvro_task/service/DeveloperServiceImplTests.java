@@ -6,6 +6,7 @@ import com.example.solvro_task.entity.enums.Specialization;
 import com.example.solvro_task.repository.DeveloperRepository;
 import com.example.solvro_task.service.impl.DeveloperServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -40,6 +41,7 @@ public class DeveloperServiceImplTests {
     }
 
     @Test
+    @DisplayName("registerDeveloper")
     public void developerService_registerDeveloper_thenSaveDeveloper() {
         // arrange
         DeveloperModel devModel = new DeveloperModel(developer.getEmail(), developer.getSpecialization());
@@ -56,6 +58,7 @@ public class DeveloperServiceImplTests {
     }
 
     @Test
+    @DisplayName("save")
     public void developerService_save_thenSaveDeveloper() {
         when(developerRepository.save(any(Developer.class))).thenReturn(developer);
 
@@ -67,6 +70,7 @@ public class DeveloperServiceImplTests {
     }
 
     @Test
+    @DisplayName("findByEmail")
     public void developerService_findByEmail_returnDeveloper() {
         when(developerRepository.findByEmail(developer.getEmail())).thenReturn(Optional.of(developer));
         
@@ -77,6 +81,7 @@ public class DeveloperServiceImplTests {
     }
 
     @Test
+    @DisplayName("findAllBySpecialization")
     public void developerService_findAllBySpecialization_returnMoreThanOneDeveloper() {
         Specialization specialization = BACKEND;
         Developer developer1 = Developer.builder()

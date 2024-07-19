@@ -1,6 +1,7 @@
 package com.example.solvro_task.repository;
 
 import com.example.solvro_task.entity.Developer;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.jdbc.EmbeddedDatabaseConnection;
@@ -24,6 +25,7 @@ public class DeveloperRepositoryTests {
     private DeveloperRepository developerRepository;
 
     @Test
+    @DisplayName("findByEmail")
     public void developerRepository_findByEmail_returnDeveloper() {
         // arrange
         Developer developer = Developer.builder()
@@ -41,6 +43,7 @@ public class DeveloperRepositoryTests {
     }
 
     @Test
+    @DisplayName("findAllByBackendSpecialization")
     public void developerRepository_findAllByBackendSpecialization_returnAllBackendDevelopers() {
         Developer developer1 = Developer.builder()
                 .email("dev1@x.com")

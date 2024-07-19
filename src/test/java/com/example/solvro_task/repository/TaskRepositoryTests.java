@@ -5,6 +5,7 @@ import com.example.solvro_task.entity.Project;
 import com.example.solvro_task.entity.Task;
 import com.example.solvro_task.entity.TaskCredentials;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.jdbc.EmbeddedDatabaseConnection;
@@ -47,6 +48,7 @@ public class TaskRepositoryTests {
     }
 
     @Test
+    @DisplayName("findByIdAndProjectId")
     public void taskRepository_findByIdAndProjectId_returnTask() {
         // arrange
         Task task = Task.builder()
@@ -71,6 +73,7 @@ public class TaskRepositoryTests {
     }
 
     @Test
+    @DisplayName("findByProjectIdAndDeveloper")
     public void taskRepository_findByProjectIdAndDeveloper_returnMoreThanOneTask() {
         Task task1 = Task.builder()
                 .createdAt(LocalDateTime.now())
@@ -100,6 +103,7 @@ public class TaskRepositoryTests {
     }
 
     @Test
+    @DisplayName("findUnassignedTasksByProjectId")
     public void taskRepository_findUnassignedTasksByProjectId_returnMoreThanOneTask() {
         Task task1 = Task.builder()
                 .createdAt(LocalDateTime.now())

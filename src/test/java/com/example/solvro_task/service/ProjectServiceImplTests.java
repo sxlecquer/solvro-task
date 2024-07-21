@@ -1,6 +1,9 @@
 package com.example.solvro_task.service;
 
+import com.example.solvro_task.dto.DeveloperModel;
 import com.example.solvro_task.dto.request.ProjectCreationRequest;
+import com.example.solvro_task.dto.response.DeveloperProjectsResponse;
+import com.example.solvro_task.dto.response.ProjectResponse;
 import com.example.solvro_task.entity.Developer;
 import com.example.solvro_task.entity.Project;
 import com.example.solvro_task.repository.ProjectRepository;
@@ -15,9 +18,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 import static com.example.solvro_task.entity.enums.Specialization.*;
 import static org.assertj.core.api.Assertions.*;
@@ -41,6 +42,7 @@ public class ProjectServiceImplTests {
     private ProjectServiceImpl projectService;
 
     private Developer developer;
+    private Project project;
 
     @BeforeEach
     public void setUp() {
@@ -48,6 +50,11 @@ public class ProjectServiceImplTests {
                 .email("dev@x.com")
                 .specialization(BACKEND)
                 .projects(new HashSet<>())
+                .build();
+        project = Project.builder()
+                .name("startup")
+                .description("description")
+                .developers(List.of(developer))
                 .build();
     }
 
@@ -67,5 +74,36 @@ public class ProjectServiceImplTests {
         assertThat(savedProject.getDevelopers()).containsExactlyInAnyOrder(developer);
 
         verify(developerService).save(developer);
+    }
+
+    @Test
+    @DisplayName("findById")
+    public void projectService_findById_returnProjectResponse() {
+        Long projectId = 1L;
+        when(projectRepository.findById(projectId)).thenReturn(Optional.of(project));
+
+        ProjectResponse response = projectService.findById(projectId);
+
+        assertThat(response.name()).isEqualTo(project.getName());
+        assertThat(response.description()).isEqualTo(project.getDescription());
+        assertThat(response.developers()).extracting(DeveloperModel::email, DeveloperModel::specialization)
+                .containsOnly(tuple(developer.getEmail(), developer.getSpecialization()));
+    }
+
+    @Test
+    @DisplayName("getProjectsByEmail")
+    public void projectService_getProjectsByEmail_returnDeveloperProjectsResponse() {
+        Developer dev = Developer.builder()
+                .email("dev@x.com")
+                .specialization(BACKEND)
+                .projects(Set.of(project))
+                .build();
+        when(developerService.findByEmail(anyString())).thenReturn(Optional.of(dev));
+
+        DeveloperProjectsResponse response = projectService.getProjectsByEmail(dev.getEmail());
+
+        assertThat(response.projects()).hasSize(1);
+        assertThat(response.projects()).extracting(ProjectResponse::name, ProjectResponse::description)
+                .containsOnly(tuple(project.getName(), project.getDescription()));
     }
 }

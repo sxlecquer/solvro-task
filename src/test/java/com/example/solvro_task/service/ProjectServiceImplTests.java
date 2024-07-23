@@ -2,10 +2,12 @@ package com.example.solvro_task.service;
 
 import com.example.solvro_task.dto.DeveloperModel;
 import com.example.solvro_task.dto.request.ProjectCreationRequest;
+import com.example.solvro_task.dto.request.TaskCreationRequest;
 import com.example.solvro_task.dto.response.DeveloperProjectsResponse;
 import com.example.solvro_task.dto.response.ProjectResponse;
 import com.example.solvro_task.entity.Developer;
 import com.example.solvro_task.entity.Project;
+import com.example.solvro_task.entity.Task;
 import com.example.solvro_task.repository.ProjectRepository;
 import com.example.solvro_task.repository.TaskAssignmentRepository;
 import com.example.solvro_task.service.impl.ProjectServiceImpl;
@@ -55,6 +57,7 @@ public class ProjectServiceImplTests {
                 .name("startup")
                 .description("description")
                 .developers(List.of(developer))
+                .tasks(new ArrayList<>())
                 .build();
     }
 
@@ -105,5 +108,55 @@ public class ProjectServiceImplTests {
         assertThat(response.projects()).hasSize(1);
         assertThat(response.projects()).extracting(ProjectResponse::name, ProjectResponse::description)
                 .containsOnly(tuple(project.getName(), project.getDescription()));
+    }
+
+    @Test
+    @DisplayName("createTaskWITHOUTAssignedDeveloper")
+    public void projectService_createTaskWithoutAssignedDeveloper_thenSaveTask() {
+        Long projectId = 1L;
+        TaskCreationRequest request = new TaskCreationRequest("task", 144, FRONTEND, null);
+        when(projectRepository.findById(projectId)).thenReturn(Optional.of(project));
+
+        projectService.createTask(request, projectId);
+
+        ArgumentCaptor<Task> taskCaptor = ArgumentCaptor.forClass(Task.class);
+        verify(taskService).save(taskCaptor.capture());
+        Task savedTask = taskCaptor.getValue();
+        assertThat(savedTask.getTaskCredentials().getName()).isEqualTo(request.name());
+        assertThat(savedTask.getTaskCredentials().getEstimation()).isEqualTo(request.estimation());
+        assertThat(savedTask.getTaskCredentials().getSpecialization()).isEqualTo(request.specialization());
+        assertThat(savedTask.getTaskCredentials().getAssignedDeveloper()).isNull();
+    }
+
+    @Test
+    @DisplayName("createTaskWITHAssignedDeveloper")
+    public void projectService_createTaskWithAssignedDeveloper_thenSaveTask() {
+        Long projectId = 1L;
+        Developer dev = Developer.builder().email("dev1@x.com").specialization(FRONTEND).projects(new HashSet<>()).build();
+        TaskCreationRequest request = new TaskCreationRequest("task", 144, FRONTEND, dev.getEmail());
+        when(projectRepository.findById(projectId)).thenReturn(Optional.of(project));
+        when(developerService.findByEmail(anyString())).thenReturn(Optional.of(dev));
+
+        projectService.createTask(request, projectId);
+
+        ArgumentCaptor<Task> taskCaptor = ArgumentCaptor.forClass(Task.class);
+        verify(taskService).save(taskCaptor.capture());
+        Task savedTask = taskCaptor.getValue();
+        assertThat(savedTask.getTaskCredentials().getName()).isEqualTo(request.name());
+        assertThat(savedTask.getTaskCredentials().getEstimation()).isEqualTo(request.estimation());
+        assertThat(savedTask.getTaskCredentials().getSpecialization()).isEqualTo(request.specialization());
+        assertThat(savedTask.getTaskCredentials().getAssignedDeveloper()).isEqualTo(dev);
+        assertThat(savedTask.getTaskCredentials().getAssignedDeveloper().getProjects()).contains(project);
+    }
+
+    @Test
+    @DisplayName("createTaskWithWrongAssignedDeveloperSpec")
+    public void projectService_createTaskWithAssignedDeveloper_throwExceptionOfSpecMismatch() {
+        Long projectId = 1L;
+        TaskCreationRequest request = new TaskCreationRequest("task", 144, FRONTEND, developer.getEmail());
+        when(projectRepository.findById(projectId)).thenReturn(Optional.of(project));
+        when(developerService.findByEmail(anyString())).thenReturn(Optional.of(developer));
+
+        assertThatIllegalArgumentException().isThrownBy(() -> projectService.createTask(request, projectId)).withMessageContaining("specialization mismatch");
     }
 }

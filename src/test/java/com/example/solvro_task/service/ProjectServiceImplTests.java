@@ -2,12 +2,15 @@ package com.example.solvro_task.service;
 
 import com.example.solvro_task.dto.DeveloperModel;
 import com.example.solvro_task.dto.request.ProjectCreationRequest;
+import com.example.solvro_task.dto.request.TaskChangeRequest;
 import com.example.solvro_task.dto.request.TaskCreationRequest;
 import com.example.solvro_task.dto.response.DeveloperProjectsResponse;
 import com.example.solvro_task.dto.response.ProjectResponse;
+import com.example.solvro_task.dto.response.TaskResponse;
 import com.example.solvro_task.entity.Developer;
 import com.example.solvro_task.entity.Project;
 import com.example.solvro_task.entity.Task;
+import com.example.solvro_task.entity.TaskCredentials;
 import com.example.solvro_task.repository.ProjectRepository;
 import com.example.solvro_task.repository.TaskAssignmentRepository;
 import com.example.solvro_task.service.impl.ProjectServiceImpl;
@@ -20,9 +23,11 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDateTime;
 import java.util.*;
 
 import static com.example.solvro_task.entity.enums.Specialization.*;
+import static com.example.solvro_task.entity.enums.TaskState.*;
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -45,6 +50,7 @@ public class ProjectServiceImplTests {
 
     private Developer developer;
     private Project project;
+    private Task task;
 
     @BeforeEach
     public void setUp() {
@@ -58,6 +64,16 @@ public class ProjectServiceImplTests {
                 .description("description")
                 .developers(List.of(developer))
                 .tasks(new ArrayList<>())
+                .build();
+        task = Task.builder()
+                .createdAt(LocalDateTime.now())
+                .taskCredentials(TaskCredentials.builder()
+                        .name("task")
+                        .estimation(144)
+                        .specialization(FRONTEND)
+                        .build())
+                .state(TODO)
+                .project(project)
                 .build();
     }
 
@@ -111,7 +127,7 @@ public class ProjectServiceImplTests {
     }
 
     @Test
-    @DisplayName("createTaskWITHOUTAssignedDeveloper")
+    @DisplayName("createTaskWithoutAssignedDeveloper")
     public void projectService_createTaskWithoutAssignedDeveloper_thenSaveTask() {
         Long projectId = 1L;
         TaskCreationRequest request = new TaskCreationRequest("task", 144, FRONTEND, null);
@@ -129,13 +145,13 @@ public class ProjectServiceImplTests {
     }
 
     @Test
-    @DisplayName("createTaskWITHAssignedDeveloper")
+    @DisplayName("createTask")
     public void projectService_createTaskWithAssignedDeveloper_thenSaveTask() {
         Long projectId = 1L;
-        Developer dev = Developer.builder().email("dev1@x.com").specialization(FRONTEND).projects(new HashSet<>()).build();
-        TaskCreationRequest request = new TaskCreationRequest("task", 144, FRONTEND, dev.getEmail());
+        developer.setSpecialization(FRONTEND);
+        TaskCreationRequest request = new TaskCreationRequest("task", 144, FRONTEND, developer.getEmail());
         when(projectRepository.findById(projectId)).thenReturn(Optional.of(project));
-        when(developerService.findByEmail(anyString())).thenReturn(Optional.of(dev));
+        when(developerService.findByEmail(anyString())).thenReturn(Optional.of(developer));
 
         projectService.createTask(request, projectId);
 
@@ -145,7 +161,7 @@ public class ProjectServiceImplTests {
         assertThat(savedTask.getTaskCredentials().getName()).isEqualTo(request.name());
         assertThat(savedTask.getTaskCredentials().getEstimation()).isEqualTo(request.estimation());
         assertThat(savedTask.getTaskCredentials().getSpecialization()).isEqualTo(request.specialization());
-        assertThat(savedTask.getTaskCredentials().getAssignedDeveloper()).isEqualTo(dev);
+        assertThat(savedTask.getTaskCredentials().getAssignedDeveloper()).isEqualTo(developer);
         assertThat(savedTask.getTaskCredentials().getAssignedDeveloper().getProjects()).contains(project);
     }
 
@@ -157,6 +173,64 @@ public class ProjectServiceImplTests {
         when(projectRepository.findById(projectId)).thenReturn(Optional.of(project));
         when(developerService.findByEmail(anyString())).thenReturn(Optional.of(developer));
 
-        assertThatIllegalArgumentException().isThrownBy(() -> projectService.createTask(request, projectId)).withMessageContaining("specialization mismatch");
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> projectService.createTask(request, projectId))
+                .withMessageContaining("specialization mismatch");
+    }
+
+    @Test
+    @DisplayName("changeTaskWithoutAssignedDeveloper")
+    public void projectService_changeTaskWithoutAssignedDeveloper_returnTaskResponse() {
+        Long projectId = 1L;
+        Long taskId = 2L;
+        TaskChangeRequest request = new TaskChangeRequest(DONE, null);
+        when(taskService.findByIdAndProjectId(taskId, projectId)).thenReturn(Optional.of(task));
+        when(projectRepository.findById(projectId)).thenReturn(Optional.of(project));
+
+        TaskResponse response = projectService.changeTask(request, projectId, taskId);
+
+        assertThat(response.projectName()).isEqualTo(task.getProject().getName());
+        assertThat(response.name()).isEqualTo(task.getTaskCredentials().getName());
+        assertThat(response.estimation()).isEqualTo(task.getTaskCredentials().getEstimation());
+        assertThat(response.specialization()).isEqualTo(task.getTaskCredentials().getSpecialization());
+        assertThat(response.state()).isEqualTo(DONE);
+    }
+
+    @Test
+    @DisplayName("changeTask")
+    public void projectService_changeTaskWithAssignedDeveloper_returnTaskResponse() {
+        Long projectId = 1L;
+        Long taskId = 2L;
+        developer.setSpecialization(FRONTEND);
+        TaskChangeRequest request = new TaskChangeRequest(DONE, developer.getEmail());
+        when(taskService.findByIdAndProjectId(taskId, projectId)).thenReturn(Optional.of(task));
+        when(projectRepository.findById(projectId)).thenReturn(Optional.of(project));
+        when(developerService.findByEmail(anyString())).thenReturn(Optional.of(developer));
+        when(taskService.findByProjectIdAndDeveloper(eq(projectId), isNull())).thenReturn(Collections.emptyList());
+
+        TaskResponse response = projectService.changeTask(request, projectId, taskId);
+
+        assertThat(response.projectName()).isEqualTo(task.getProject().getName());
+        assertThat(response.name()).isEqualTo(task.getTaskCredentials().getName());
+        assertThat(response.estimation()).isEqualTo(task.getTaskCredentials().getEstimation());
+        assertThat(response.specialization()).isEqualTo(task.getTaskCredentials().getSpecialization());
+        assertThat(response.assignedDeveloper()).isEqualTo(developer.getEmail());
+        assertThat(response.state()).isEqualTo(DONE);
+        assertThat(developer.getProjects()).contains(project);
+    }
+
+    @Test
+    @DisplayName("changeTaskWithWrongAssignedDeveloperSpec")
+    public void projectService_changeTaskWithAssignedDeveloper_throwExceptionOfSpecMismatch() {
+        Long projectId = 1L;
+        Long taskId = 2L;
+        TaskChangeRequest request = new TaskChangeRequest(DONE, developer.getEmail());
+        when(taskService.findByIdAndProjectId(taskId, projectId)).thenReturn(Optional.of(task));
+        when(projectRepository.findById(projectId)).thenReturn(Optional.of(project));
+        when(developerService.findByEmail(anyString())).thenReturn(Optional.of(developer));
+
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> projectService.changeTask(request, projectId, taskId))
+                .withMessageContaining("specialization mismatch");
     }
 }

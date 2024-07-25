@@ -8,10 +8,7 @@ import com.example.solvro_task.dto.response.DeveloperProjectsResponse;
 import com.example.solvro_task.dto.response.ProjectResponse;
 import com.example.solvro_task.dto.response.TaskAssignmentResponse;
 import com.example.solvro_task.dto.response.TaskResponse;
-import com.example.solvro_task.entity.Developer;
-import com.example.solvro_task.entity.Project;
-import com.example.solvro_task.entity.Task;
-import com.example.solvro_task.entity.TaskCredentials;
+import com.example.solvro_task.entity.*;
 import com.example.solvro_task.entity.enums.Specialization;
 import com.example.solvro_task.repository.ProjectRepository;
 import com.example.solvro_task.repository.TaskAssignmentRepository;
@@ -24,6 +21,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -279,5 +278,55 @@ public class ProjectServiceImplTests {
         assertThatIllegalStateException()
                 .isThrownBy(() -> projectService.assignTasks(projectId))
                 .withMessage("No developers found by specialization: %s", task.getTaskCredentials().getSpecialization());
+    }
+
+    @Test
+    @DisplayName("acceptTaskAssignment_accept")
+    public void projectService_acceptTaskAssignment_returnAcceptedResponse() {
+        Long projectId = 1L;
+        Long assignId = 2L;
+        task.getTaskCredentials().setSpecialization(BACKEND);
+        TaskAssignment taskAssignment = TaskAssignment.builder()
+                .developer(developer)
+                .task(task)
+                .build();
+        when(taskAssignmentRepository.findByIdAndProjectId(assignId, projectId)).thenReturn(Optional.of(taskAssignment));
+
+        ResponseEntity<?> entity = projectService.acceptTaskAssignment(projectId, assignId, true);
+
+        ArgumentCaptor<TaskAssignment> taskAssignmentCaptor = ArgumentCaptor.forClass(TaskAssignment.class);
+        verify(taskAssignmentRepository).delete(taskAssignmentCaptor.capture());
+        assertThat(taskAssignmentCaptor.getValue()).isEqualTo(taskAssignment);
+        assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
+        TaskResponse response = (TaskResponse) entity.getBody();
+        assertThat(response).isNotNull();
+        assertThat(response.projectName()).isEqualTo(task.getProject().getName());
+        assertThat(response.name()).isEqualTo(task.getTaskCredentials().getName());
+        assertThat(response.estimation()).isEqualTo(task.getTaskCredentials().getEstimation());
+        assertThat(response.specialization()).isEqualTo(developer.getSpecialization());
+        assertThat(response.assignedDeveloper()).isEqualTo(developer.getEmail());
+        assertThat(response.state()).isEqualTo(task.getState());
+        assertThat(response.createdAt()).isEqualTo(task.getCreatedAt());
+    }
+
+    @Test
+    @DisplayName("acceptTaskAssignment_reject")
+    public void projectService_acceptTaskAssignment_returnRejectedResponse() {
+        Long projectId = 1L;
+        Long assignId = 2L;
+        TaskAssignment taskAssignment = TaskAssignment.builder()
+                .developer(developer)
+                .task(task)
+                .build();
+        when(taskAssignmentRepository.findByIdAndProjectId(assignId, projectId)).thenReturn(Optional.of(taskAssignment));
+
+        ResponseEntity<?> entity = projectService.acceptTaskAssignment(projectId, assignId, false);
+
+        ArgumentCaptor<TaskAssignment> taskAssignmentCaptor = ArgumentCaptor.forClass(TaskAssignment.class);
+        verify(taskAssignmentRepository).delete(taskAssignmentCaptor.capture());
+        assertThat(taskAssignmentCaptor.getValue()).isEqualTo(taskAssignment);
+        assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.OK);
+        String message = String.valueOf(entity.getBody());
+        assertThat(message).contains("reject");
     }
 }

@@ -6,11 +6,13 @@ import com.example.solvro_task.dto.request.TaskChangeRequest;
 import com.example.solvro_task.dto.request.TaskCreationRequest;
 import com.example.solvro_task.dto.response.DeveloperProjectsResponse;
 import com.example.solvro_task.dto.response.ProjectResponse;
+import com.example.solvro_task.dto.response.TaskAssignmentResponse;
 import com.example.solvro_task.dto.response.TaskResponse;
 import com.example.solvro_task.entity.Developer;
 import com.example.solvro_task.entity.Project;
 import com.example.solvro_task.entity.Task;
 import com.example.solvro_task.entity.TaskCredentials;
+import com.example.solvro_task.entity.enums.Specialization;
 import com.example.solvro_task.repository.ProjectRepository;
 import com.example.solvro_task.repository.TaskAssignmentRepository;
 import com.example.solvro_task.service.impl.ProjectServiceImpl;
@@ -127,7 +129,7 @@ public class ProjectServiceImplTests {
     }
 
     @Test
-    @DisplayName("createTaskWithoutAssignedDeveloper")
+    @DisplayName("createTask_withoutAssignedDeveloper")
     public void projectService_createTaskWithoutAssignedDeveloper_thenSaveTask() {
         Long projectId = 1L;
         TaskCreationRequest request = new TaskCreationRequest("task", 144, FRONTEND, null);
@@ -166,7 +168,7 @@ public class ProjectServiceImplTests {
     }
 
     @Test
-    @DisplayName("createTaskWithWrongAssignedDeveloperSpec")
+    @DisplayName("createTask_specMismatch")
     public void projectService_createTaskWithAssignedDeveloper_throwExceptionOfSpecMismatch() {
         Long projectId = 1L;
         TaskCreationRequest request = new TaskCreationRequest("task", 144, FRONTEND, developer.getEmail());
@@ -179,7 +181,7 @@ public class ProjectServiceImplTests {
     }
 
     @Test
-    @DisplayName("changeTaskWithoutAssignedDeveloper")
+    @DisplayName("changeTask_withoutAssignedDeveloper")
     public void projectService_changeTaskWithoutAssignedDeveloper_returnTaskResponse() {
         Long projectId = 1L;
         Long taskId = 2L;
@@ -220,7 +222,7 @@ public class ProjectServiceImplTests {
     }
 
     @Test
-    @DisplayName("changeTaskWithWrongAssignedDeveloperSpec")
+    @DisplayName("changeTask_specMismatch")
     public void projectService_changeTaskWithAssignedDeveloper_throwExceptionOfSpecMismatch() {
         Long projectId = 1L;
         Long taskId = 2L;
@@ -232,5 +234,50 @@ public class ProjectServiceImplTests {
         assertThatIllegalArgumentException()
                 .isThrownBy(() -> projectService.changeTask(request, projectId, taskId))
                 .withMessageContaining("specialization mismatch");
+    }
+
+    @Test
+    @DisplayName("assignTasks")
+    public void projectService_assignTasks_returnTaskAssignments() {
+        Long projectId = 1L;
+        task.getTaskCredentials().setSpecialization(BACKEND);
+        Task newTask = Task.builder()
+                .taskCredentials(TaskCredentials.builder()
+                        .name("new task")
+                        .estimation(21)
+                        .specialization(BACKEND)
+                        .build())
+                .state(IN_PROGRESS)
+                .project(project)
+                .build();
+        Developer newDeveloper = Developer.builder()
+                .email("new_dev@x.com")
+                .specialization(BACKEND)
+                .projects(new HashSet<>())
+                .build();
+        project.getTasks().addAll(List.of(task, newTask));
+        when(projectRepository.findById(projectId)).thenReturn(Optional.of(project));
+        when(taskService.findUnassignedTasksByProjectId(projectId)).thenReturn(List.of(task, newTask));
+        when(developerService.findAllBySpecialization(any(Specialization.class))).then(invocation ->
+                invocation.getArgument(0).equals(BACKEND) ? List.of(developer, newDeveloper) : Collections.emptyList());
+        when(projectRepository.findAll()).thenReturn(List.of(project));
+
+        List<TaskAssignmentResponse> taskAssignments = projectService.assignTasks(projectId);
+
+        assertThat(taskAssignments).extracting(TaskAssignmentResponse::devEmail)
+                .containsOnly("dev@x.com", "new_dev@x.com");
+    }
+
+    @Test
+    @DisplayName("assignTasks_noDevelopersFound")
+    public void projectService_assignTasks_throwExceptionNoDevelopersFound() {
+        Long projectId = 1L;
+        when(projectRepository.findById(projectId)).thenReturn(Optional.of(project));
+        when(taskService.findUnassignedTasksByProjectId(projectId)).thenReturn(List.of(task));
+        when(developerService.findAllBySpecialization(any(Specialization.class))).thenReturn(Collections.emptyList());
+
+        assertThatIllegalStateException()
+                .isThrownBy(() -> projectService.assignTasks(projectId))
+                .withMessage("No developers found by specialization: %s", task.getTaskCredentials().getSpecialization());
     }
 }

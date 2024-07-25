@@ -211,7 +211,7 @@ public class ProjectServiceImpl implements ProjectService {
         Developer result = null;
         double minEstimation = Float.MAX_VALUE;
         for(Developer developer : developers) {
-            double averageEstimation = developer.getProjects().stream()
+            double averageEstimation = projectRepository.findAll().stream()
                     .flatMap(p -> p.getTasks().stream())
                     .filter(t -> Objects.equals(t.getTaskCredentials().getAssignedDeveloper(), developer))
                     .mapToInt(t -> t.getTaskCredentials().getEstimation())

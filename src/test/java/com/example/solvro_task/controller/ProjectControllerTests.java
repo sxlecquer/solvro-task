@@ -1,7 +1,7 @@
 package com.example.solvro_task.controller;
 
-import com.example.solvro_task.dto.DeveloperModel;
-import com.example.solvro_task.service.DeveloperService;
+import com.example.solvro_task.dto.request.ProjectCreationRequest;
+import com.example.solvro_task.service.ProjectService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -15,36 +15,37 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 
-import static com.example.solvro_task.entity.enums.Specialization.*;
+import java.util.List;
+
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-@WebMvcTest(controllers = DeveloperController.class)
+@WebMvcTest(controllers = ProjectController.class)
 @AutoConfigureMockMvc
-public class DeveloperControllerTests {
+public class ProjectControllerTests {
     @Autowired
     private MockMvc mockMvc;
-    
+
     @Autowired
     private ObjectMapper objectMapper;
 
     @MockBean
-    private DeveloperService developerService;
+    private ProjectService projectService;
 
     @Test
-    @DisplayName("registerDeveloper")
-    public void developerController_registerDeveloper_returnSuccessMessage() throws Exception {
-        DeveloperModel developerModel = new DeveloperModel("dev@x.com", BACKEND);
-        String developerJson = objectMapper.writeValueAsString(developerModel);
+    @DisplayName("createProject")
+    public void projectService_createProject_returnSuccessMessage() throws Exception {
+        ProjectCreationRequest request = new ProjectCreationRequest("startup", "description", List.of("dev1@x.com", "dev2@x.com"));
+        String requestJson = objectMapper.writeValueAsString(request);
 
-        mockMvc.perform(MockMvcRequestBuilders.post("/developer")
+        mockMvc.perform(MockMvcRequestBuilders.post("/project")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(developerJson))
+                .content(requestJson))
                 .andExpect(MockMvcResultMatchers.status().isOk())
-                .andExpect(MockMvcResultMatchers.content().string("Developer registration successful"));
+                .andExpect(MockMvcResultMatchers.content().string("Project created successfully"));
 
-        ArgumentCaptor<DeveloperModel> captor = ArgumentCaptor.forClass(DeveloperModel.class);
-        verify(developerService).registerDeveloper(captor.capture());
-        assertThat(captor.getValue()).isEqualTo(developerModel);
+        ArgumentCaptor<ProjectCreationRequest> requestCaptor = ArgumentCaptor.forClass(ProjectCreationRequest.class);
+        verify(projectService).createProject(requestCaptor.capture());
+        assertThat(requestCaptor.getValue()).isEqualTo(request);
     }
 }

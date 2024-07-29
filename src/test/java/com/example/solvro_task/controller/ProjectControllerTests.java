@@ -2,6 +2,7 @@ package com.example.solvro_task.controller;
 
 import com.example.solvro_task.dto.DeveloperModel;
 import com.example.solvro_task.dto.request.ProjectCreationRequest;
+import com.example.solvro_task.dto.request.TaskCreationRequest;
 import com.example.solvro_task.dto.response.DeveloperProjectsResponse;
 import com.example.solvro_task.dto.response.ProjectResponse;
 import com.example.solvro_task.service.ProjectService;
@@ -17,6 +18,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
+import java.util.Arrays;
 import java.util.List;
 
 import static com.example.solvro_task.entity.enums.Specialization.*;
@@ -47,11 +49,27 @@ public class ProjectControllerTests {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(requestJson))
                 .andExpect(status().isOk())
-                .andExpect(content().string("Project created successfully"));
+                .andExpect(content().string(containsStringIgnoringCase("created")));
 
         ArgumentCaptor<ProjectCreationRequest> requestCaptor = ArgumentCaptor.forClass(ProjectCreationRequest.class);
         verify(projectService).createProject(requestCaptor.capture());
         assertThat(requestCaptor.getValue()).isEqualTo(request);
+    }
+
+    @Test
+    @DisplayName("createProject_badRequest")
+    public void projectService_createProject_returnBadRequest() throws Exception {
+        ProjectCreationRequest request = new ProjectCreationRequest("", " ", Arrays.asList("incorrect", null));
+        String requestJson = objectMapper.writeValueAsString(request);
+
+        mockMvc.perform(MockMvcRequestBuilders.post("/project")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestJson))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.name", containsStringIgnoringCase("blank")))
+                .andExpect(jsonPath("$.description", containsStringIgnoringCase("blank")))
+                .andExpect(jsonPath("$['developerEmails[0]']", containsStringIgnoringCase("email")))
+                .andExpect(jsonPath("$['developerEmails[1]']", containsStringIgnoringCase("null")));
     }
 
     @Test
@@ -70,6 +88,7 @@ public class ProjectControllerTests {
                 .andExpect(jsonPath("$.name", is(response.name())))
                 .andExpect(jsonPath("$.description", is(response.description())))
                 .andExpect(jsonPath("$.developers.size()", is(response.developers().size())));
+
         verify(projectService).findById(projectId);
     }
 
@@ -102,5 +121,40 @@ public class ProjectControllerTests {
                 .andExpect(jsonPath("$.projects[1].developers.size()", is(response.projects().get(1).developers().size())));
 
         verify(projectService).getProjectsByEmail(email);
+    }
+
+    @Test
+    @DisplayName("createTask")
+    public void projectService_createTask_returnSuccessMessage() throws Exception {
+        Long projectId = 1L;
+        TaskCreationRequest request = new TaskCreationRequest("startup", 89, DEVOPS, "dev@x.com");
+        String requestJson = objectMapper.writeValueAsString(request);
+
+        mockMvc.perform(MockMvcRequestBuilders.post("/project/{id}/task", projectId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestJson))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsStringIgnoringCase("created")));
+
+        ArgumentCaptor<TaskCreationRequest> requestCaptor = ArgumentCaptor.forClass(TaskCreationRequest.class);
+        verify(projectService).createTask(requestCaptor.capture(), eq(projectId));
+        assertThat(requestCaptor.getValue()).isEqualTo(request);
+    }
+
+    @Test
+    @DisplayName("createTask_badRequest")
+    public void projectService_createTask_returnBadRequest() throws Exception {
+        Long projectId = 1L;
+        TaskCreationRequest request = new TaskCreationRequest(" ", -19, null, "incorrect");
+        String requestJson = objectMapper.writeValueAsString(request);
+
+        mockMvc.perform(MockMvcRequestBuilders.post("/project/{id}/task", projectId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestJson))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.name", containsStringIgnoringCase("blank")))
+                .andExpect(jsonPath("$.estimation", containsStringIgnoringCase("fibonacci")))
+                .andExpect(jsonPath("$.specialization", containsStringIgnoringCase("null")))
+                .andExpect(jsonPath("$.assignedDeveloper", containsStringIgnoringCase("email")));
     }
 }

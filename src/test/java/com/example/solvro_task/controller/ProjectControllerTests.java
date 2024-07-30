@@ -2,11 +2,14 @@ package com.example.solvro_task.controller;
 
 import com.example.solvro_task.dto.DeveloperModel;
 import com.example.solvro_task.dto.request.ProjectCreationRequest;
+import com.example.solvro_task.dto.request.TaskChangeRequest;
 import com.example.solvro_task.dto.request.TaskCreationRequest;
 import com.example.solvro_task.dto.response.DeveloperProjectsResponse;
 import com.example.solvro_task.dto.response.ProjectResponse;
+import com.example.solvro_task.dto.response.TaskResponse;
 import com.example.solvro_task.service.ProjectService;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.hamcrest.Matchers;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -18,10 +21,12 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
 
 import static com.example.solvro_task.entity.enums.Specialization.*;
+import static com.example.solvro_task.entity.enums.TaskState.*;
 import static org.assertj.core.api.Assertions.*;
 import static org.hamcrest.CoreMatchers.*;
 import static org.mockito.Mockito.*;
@@ -156,5 +161,63 @@ public class ProjectControllerTests {
                 .andExpect(jsonPath("$.estimation", containsStringIgnoringCase("fibonacci")))
                 .andExpect(jsonPath("$.specialization", containsStringIgnoringCase("null")))
                 .andExpect(jsonPath("$.assignedDeveloper", containsStringIgnoringCase("email")));
+    }
+
+    @Test
+    @DisplayName("changeTask")
+    public void projectService_changeTask_returnTaskDto() throws Exception {
+        Long projectId = 1L;
+        Long taskId = 2L;
+        TaskChangeRequest request = new TaskChangeRequest(IN_PROGRESS, "new_dev@x.com");
+        String requestJson = objectMapper.writeValueAsString(request);
+        TaskResponse response = new TaskResponse("startup", "task", 5, UX_UI,
+                request.assignedDeveloper(), request.state(), LocalDateTime.now());
+        when(projectService.changeTask(request, projectId, taskId)).thenReturn(response);
+
+        mockMvc.perform(MockMvcRequestBuilders.patch("/project/{id}/task/{taskId}", projectId, taskId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestJson))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.projectName", is(response.projectName())))
+                .andExpect(jsonPath("$.name", is(response.name())))
+                .andExpect(jsonPath("$.estimation", is(response.estimation())))
+                .andExpect(jsonPath("$.specialization", is(response.specialization().toString())))
+                .andExpect(jsonPath("$.assignedDeveloper", is(response.assignedDeveloper())))
+                .andExpect(jsonPath("$.state", is(response.state().toString())))
+                .andExpect(jsonPath("$.createdAt", Matchers.matchesPattern("^" + response.createdAt().toString().replaceAll("\\.\\d+", "") + ".*$")));
+
+        verify(projectService).changeTask(request, projectId, taskId);
+    }
+
+    @Test
+    @DisplayName("changeTask_badRequest")
+    public void projectService_changeTask_returnBadRequest() throws Exception {
+        Long projectId = 1L;
+        Long taskId = 2L;
+        TaskChangeRequest request = new TaskChangeRequest(null, "incorrect");
+        String requestJson = objectMapper.writeValueAsString(request);
+
+        mockMvc.perform(MockMvcRequestBuilders.patch("/project/{id}/task/{taskId}", projectId, taskId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestJson))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.state", containsStringIgnoringCase("null")))
+                .andExpect(jsonPath("$.assignedDeveloper", containsStringIgnoringCase("email")));
+    }
+
+    @Test
+    @DisplayName("changeTask_badRequest_specMismatch")
+    public void projectService_changeTask_returnBadRequestDueToSpecMismatch() throws Exception {
+        Long projectId = 1L;
+        Long taskId = 2L;
+        TaskChangeRequest request = new TaskChangeRequest(DONE, "spec_mismatch@x.com");
+        String requestJson = objectMapper.writeValueAsString(request);
+        when(projectService.changeTask(request, projectId, taskId)).thenThrow(new IllegalArgumentException("Task specialization mismatches assigned developer"));
+
+        mockMvc.perform(MockMvcRequestBuilders.patch("/project/{id}/task/{taskId}", projectId, taskId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestJson))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().string(containsString("specialization mismatch")));
     }
 }

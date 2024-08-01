@@ -6,6 +6,7 @@ import com.example.solvro_task.dto.request.TaskChangeRequest;
 import com.example.solvro_task.dto.request.TaskCreationRequest;
 import com.example.solvro_task.dto.response.DeveloperProjectsResponse;
 import com.example.solvro_task.dto.response.ProjectResponse;
+import com.example.solvro_task.dto.response.TaskAssignmentResponse;
 import com.example.solvro_task.dto.response.TaskResponse;
 import com.example.solvro_task.service.ProjectService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -219,5 +220,53 @@ public class ProjectControllerTests {
                         .content(requestJson))
                 .andExpect(status().isBadRequest())
                 .andExpect(content().string(containsString("specialization mismatch")));
+
+        verify(projectService).changeTask(request, projectId, taskId);
+    }
+
+    @Test
+    @DisplayName("assignTasks")
+    public void projectService_assignTasks_returnTaskAssignmentDtoList() throws Exception {
+        Long projectId = 1L;
+        TaskAssignmentResponse assign1 = TaskAssignmentResponse.builder()
+                .projectName("startup")
+                .taskName("task1")
+                .specialization(BACKEND)
+                .devEmail("dev1@x.com")
+                .build();
+        TaskAssignmentResponse assign2 = TaskAssignmentResponse.builder()
+                .projectName("startup")
+                .taskName("task2")
+                .specialization(FRONTEND)
+                .devEmail("dev2@x.com")
+                .build();
+        when(projectService.assignTasks(projectId)).thenReturn(List.of(assign1, assign2));
+
+        mockMvc.perform(MockMvcRequestBuilders.post("/project/{id}/task/assignment", projectId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.size()", is(2)))
+                .andExpect(jsonPath("$..projectName", hasItems(assign1.projectName(), assign2.projectName())))
+                .andExpect(jsonPath("$..taskName", hasItems(assign2.taskName(), assign1.taskName())))
+                .andExpect(jsonPath("$..specialization", hasItems(assign1.specialization().toString(), assign2.specialization().toString())))
+                .andExpect(jsonPath("$..devEmail", hasItems(assign1.devEmail(), assign2.devEmail())));
+
+        verify(projectService).assignTasks(projectId);
+    }
+
+    @Test
+    @DisplayName("assignTasks_badRequest_notFound")
+    public void projectService_assignTasks_returnBadRequestDueToProjectId() throws Exception {
+        Long projectId = 999L;
+        when(projectService.assignTasks(projectId)).thenThrow(new IllegalArgumentException("Project not found by id: " + projectId));
+
+        mockMvc.perform(MockMvcRequestBuilders.post("/project/{id}/task/assignment", projectId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().string(containsString("not found")));
+
+        verify(projectService).assignTasks(projectId);
     }
 }

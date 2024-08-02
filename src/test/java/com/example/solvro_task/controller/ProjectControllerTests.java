@@ -18,7 +18,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
@@ -268,5 +270,47 @@ public class ProjectControllerTests {
                 .andExpect(content().string(containsString("not found")));
 
         verify(projectService).assignTasks(projectId);
+    }
+
+    @Test
+    @DisplayName("acceptTaskAssignment_accept")
+    public void projectService_acceptTaskAssignment_returnTaskDtoAndAcceptedStatus() throws Exception {
+        Long projectId = 1L;
+        Long assignId = 2L;
+        TaskResponse task = new TaskResponse("startup", "task", 13, BACKEND,
+                "dev@x.com", TODO, LocalDateTime.now());
+        ResponseEntity<TaskResponse> response = new ResponseEntity<>(task, HttpStatus.ACCEPTED);
+        doReturn(response).when(projectService).acceptTaskAssignment(projectId, assignId, true);
+
+        mockMvc.perform(MockMvcRequestBuilders.patch("/project/{id}/task/assignment/{assignId}", projectId, assignId)
+                        .queryParam("accepted", "1")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.projectName", is(task.projectName())))
+                .andExpect(jsonPath("$.name", is(task.name())))
+                .andExpect(jsonPath("$.estimation", is(task.estimation())))
+                .andExpect(jsonPath("$.specialization", is(task.specialization().toString())))
+                .andExpect(jsonPath("$.assignedDeveloper", is(task.assignedDeveloper())))
+                .andExpect(jsonPath("$.state", is(task.state().toString())))
+                .andExpect(jsonPath("$.createdAt", Matchers.matchesRegex("^" + task.createdAt().toString().replaceAll("\\.\\d+", "") + ".*$")));
+
+        verify(projectService).acceptTaskAssignment(projectId, assignId, true);
+    }
+
+    @Test
+    @DisplayName("acceptTaskAssignment_reject")
+    public void projectService_acceptTaskAssignment_returnSuccessMessage() throws Exception {
+        Long projectId = 1L;
+        Long assignId = 2L;
+        when(projectService.acceptTaskAssignment(projectId, assignId, false))
+                .thenAnswer(inv -> ResponseEntity.ok("Task assignment rejected"));
+
+        mockMvc.perform(MockMvcRequestBuilders.patch("/project/{id}/task/assignment/{assignId}", projectId, assignId)
+                        .queryParam("accepted", "0")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("rejected")));
+
+        verify(projectService).acceptTaskAssignment(projectId, assignId, false);
     }
 }
